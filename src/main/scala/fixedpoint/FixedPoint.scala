@@ -22,6 +22,7 @@ import chisel3.internal.sourceinfo.{SourceInfoTransform, SourceInfoWhiteboxTrans
 
 import scala.collection.immutable.SeqMap
 import scala.language.experimental.macros
+import chisel3.util.Cat
 
 object FixedPoint extends NumObject {
 
@@ -416,5 +417,23 @@ sealed class FixedPoint private[fixedpoint] (width: Width, private var _inferred
         }
         s"FixedPoint$width$binaryPoint$suffix"
     }
+  }
+
+  def floor(): FixedPoint = {
+    // Set the fractional part to zeroes
+    val floored = Cat(data(data.widthOption.get - 1, binaryPoint.get), 0.U((binaryPoint.get).W)).asSInt
+    FixedPoint.fromData(binaryPoint, floored)
+  }
+
+  def ceil(): FixedPoint = {
+    // Get a number with the fractional part set to ones
+    val almost_one = 0.U(data.getWidth.W) + ~(0.U(this.binaryPoint.get.W))
+    // Add it to the number and floor it
+    (this + FixedPoint.fromData(binaryPoint, 0.S(data.getWidth.W) + almost_one.asSInt)).floor()
+  }
+
+  def round(): FixedPoint = {
+    // Add 0.5 to the number and then floor it
+    (this + 0.5.F(binaryPoint)).floor()
   }
 }
